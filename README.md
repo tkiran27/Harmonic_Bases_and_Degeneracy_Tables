@@ -8,6 +8,6 @@ harmonic homogeneous polynomials of bidegree $(p,q)$ that are invariant under th
 and we find its dimension using a Taylor expansion of the Ikeda generating function. A degeneracy table simply shows these
 dimensions for various bidegrees.
 
-We transfered our code to a Kaggle notebook so that the resulting expressions would be typeset nicely. It also worked out
+We used a Kaggle notebook so that the resulting expressions would be typeset nicely. It also worked out
 quite well for the degeneracy tables. These can take a while to generate, so we linked our code to a database that stores the
 tables once they are generated: https://www.kaggle.com/datasets/tanvikiran27/degeneracy-tables/data
