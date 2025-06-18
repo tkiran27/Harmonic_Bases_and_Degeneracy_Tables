@@ -14,4 +14,5 @@ tables once they are generated. Hit 'Run All' at the beginning of a session, and
 at the end of every session- otherwise your tables won't be stored in the dataset. Also make sure the dataset is updated to its latest version- you can do this by hovering over the dataset name under 'Datasets' on the right of the screen, clicking the three dots, and selecting 'Check for updates.'
 
 Kaggle notebook: https://www.kaggle.com/code/tanvikiran27/harmonic-invariant-basis
+
 Kaggle dataset: https://www.kaggle.com/datasets/tanvikiran27/degeneracy-tables/data
