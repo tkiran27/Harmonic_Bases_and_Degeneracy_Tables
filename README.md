@@ -11,7 +11,7 @@ dimensions for various bidegrees.
 We used a Kaggle notebook so that the resulting expressions would be typeset nicely. It also worked out
 quite well for the degeneracy tables. These can take a while to generate, so we linked our code to a database that stores the
 tables once they are generated. Hit 'Run All' at the beginning of a session, and make sure to save a version of the notebook 
-at the end of every session- otherwise your tables won't be stored in the dataset.
+at the end of every session- otherwise your tables won't be stored in the dataset. Also make sure the dataset is updated to its latest version- you can do this by hovering over the dataset name under 'Datasets' on the right of the screen, clicking the three dots, and selecting 'Check for updates.'
 
 Kaggle notebook: https://www.kaggle.com/code/tanvikiran27/harmonic-invariant-basis
 Kaggle dataset: https://www.kaggle.com/datasets/tanvikiran27/degeneracy-tables/data
