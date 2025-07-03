@@ -1,0 +1,617 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "5deceb75",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:24.012336Z",
+     "iopub.status.busy": "2025-07-03T15:01:24.011889Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.058344Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.057475Z"
+    },
+    "papermill": {
+     "duration": 5.054873,
+     "end_time": "2025-07-03T15:01:29.060353",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:24.005480",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "import itertools as it\n",
+    "import sympy as sp \n",
+    "import pandas as pd\n",
+    "from sympy import symbols, Function, diff, FiniteSet, simplify, re, AlgebraicNumber\n",
+    "from sympy import Q, ask\n",
+    "from sympy import *\n",
+    "from sympy.utilities.iterables import partitions\n",
+    "from sympy.functions.combinatorial.numbers import nC\n",
+    "from sympy.matrices import diag, eye\n",
+    "\n",
+    "import os\n",
+    "import zipfile\n",
+    "import shutil"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4dbf7ec0",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004045,
+     "end_time": "2025-07-03T15:01:29.069026",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.064981",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Bases for spherical harmonics"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f2e57e89",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003195,
+     "end_time": "2025-07-03T15:01:29.076149",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.072954",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "$n$ = dimension ($\\mathbb{R}^n$ or $\\mathbb{C}^n$) \\\n",
+    "$k$ = real degree \\\n",
+    "$(p,q)$ = complex bidegree"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "6ccaaf39",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003043,
+     "end_time": "2025-07-03T15:01:29.082594",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.079551",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "At the beginning of a session, input your values for $n$, $k$, $p$, and $q$ below and click Run All to generate a basis. Then for every new basis, just make sure to run the cell below each time you change the values."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "9878961e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.091489Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.090278Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.255312Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.254359Z"
+    },
+    "papermill": {
+     "duration": 0.171324,
+     "end_time": "2025-07-03T15:01:29.257259",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.085935",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "####### Change constants here #######\n",
+    "n = 3\n",
+    "k = 3\n",
+    "p = 1\n",
+    "q = 2\n",
+    "#####################################\n",
+    "\n",
+    "# Setting up symbols\n",
+    "f = symbols('f', cls = Function)\n",
+    "x,y,z,w,zeta = symbols('x y z w zeta')\n",
+    "zs = symbols(f'z1:{n+1}', complex=True)\n",
+    "zbar = symbols(f'zbar1:{n+1}', complex=True)\n",
+    "ls = symbols(f'l1:{n+1}', int=True)\n",
+    "\n",
+    "# Newton potential (R^n) \n",
+    "mag_real = 0\n",
+    "for i in range(n):\n",
+    "    mag_real += zs[i]**2 ## Euclidean norm squared\n",
+    "np_real = sp.sqrt(mag_real)**(2-n)\n",
+    "\n",
+    "# Newton potential (C^n)\n",
+    "mag_complex = 0\n",
+    "for i in range(n):\n",
+    "    mag_complex += zs[i]*zbar[i] ## Complex modulus squared\n",
+    "np_complex = sp.sqrt(mag_complex)**(2-2*n)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c0b8e93b",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003442,
+     "end_time": "2025-07-03T15:01:29.264598",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.261156",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "To generate a basis, make a new cell and call the function corresponding to the type of basis you want. \n",
+    "\n",
+    "real_basis() will give you a basis for $H_k$ on the sphere in $\\mathbb{R}^n$ \\\n",
+    "basis_H_pq() will give you a basis for $H_{p,q}$ on the sphere in $\\mathbb{C}^n$ (this is probably the one you'll use most)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "7de36bf6",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.274101Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.273754Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.279123Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.278264Z"
+    },
+    "papermill": {
+     "duration": 0.011892,
+     "end_time": "2025-07-03T15:01:29.280603",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.268711",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Multi index differentiation\n",
+    "def D(f:sp.Add, alpha: sp.FiniteSet, zs:[sp.symbols]) -> sp.Add:\n",
+    "    df = f\n",
+    "    for i in range(n):\n",
+    "        df = diff(df,(zs[i],alpha[i]))\n",
+    "    return df"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "20f990f8",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.289005Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.288656Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.294826Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.293918Z"
+    },
+    "papermill": {
+     "duration": 0.011992,
+     "end_time": "2025-07-03T15:01:29.296293",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.284301",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Returns valid n-tuples\n",
+    "# https://www.geeksforgeeks.org/python-program-to-convert-dictionary-to-list-by-repeating-keys-corresponding-value-times/\n",
+    "def get_alpha_beta(deg:int) -> sp.FiniteSet:\n",
+    "    alphas = FiniteSet()\n",
+    "    for part in partitions(deg, m=n):\n",
+    "        part = list(it.chain.from_iterable(it.repeat(k, v) for k, v in part.items()))\n",
+    "        while len(part) < n:\n",
+    "            part.append(0)\n",
+    "        for perm in it.permutations(part):\n",
+    "            alphas += FiniteSet(perm)\n",
+    "    return alphas"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "f99c167d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.304352Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.304029Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.309627Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.308739Z"
+    },
+    "papermill": {
+     "duration": 0.011256,
+     "end_time": "2025-07-03T15:01:29.311110",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.299854",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Turns rational functions in our basis into polynomials\n",
+    "def make_polynomial(f:sp.Function, mag:sp.Add) -> sp.Add:\n",
+    "    f = sp.numer(f).subs(mag, x)\n",
+    "    while f.is_polynomial(zs,zbar,x) == False:\n",
+    "        f = simplify(f * x)\n",
+    "        f = sp.numer(f).subs(mag, x)\n",
+    "    return expand(f.subs(x,abs(z)**2))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "9cb62a7a",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.319184Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.318828Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.323829Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.322995Z"
+    },
+    "papermill": {
+     "duration": 0.010845,
+     "end_time": "2025-07-03T15:01:29.325387",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.314542",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# For H_k(R^n) *NOT C^n\n",
+    "def real_dim() -> int:\n",
+    "    if k-2<0:\n",
+    "        return nC(n+k-1,k)\n",
+    "    else:\n",
+    "        return nC(n+k-1,k) - nC(n+k-3,k-2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "1a0eac4a",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.333707Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.333333Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.338559Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.337618Z"
+    },
+    "papermill": {
+     "duration": 0.011323,
+     "end_time": "2025-07-03T15:01:29.340285",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.328962",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# For H_k(C^n)\n",
+    "def dim_H_k() -> int:\n",
+    "    if k-2<0:\n",
+    "        return nC(2*n+k-1,k)\n",
+    "    else:\n",
+    "        return nC(2*n+k-1,k) - nC(2*n+k-3,k-2)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "4175678e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.349014Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.348673Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.354262Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.353406Z"
+    },
+    "papermill": {
+     "duration": 0.011907,
+     "end_time": "2025-07-03T15:01:29.355916",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.344009",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# For H_p,q(C^n)\n",
+    "def dim_H_pq() -> int:\n",
+    "    if p-1<0 or q-1<0:\n",
+    "        return nC(n+p-1,p)*nC(n+q-1,q)\n",
+    "    else:\n",
+    "        return nC(n+p-1,p)*nC(n+q-1,q) - nC(n+p-2,p-1)*nC(n+q-2,q-1)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "34cafbf7",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.364472Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.364106Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.370529Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.369397Z"
+    },
+    "papermill": {
+     "duration": 0.012371,
+     "end_time": "2025-07-03T15:01:29.372059",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.359688",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Finding basis for H_k(R^n) - see Axler's Harmonic Function Theory p. 92\n",
+    "def real_basis() -> sp.FiniteSet:\n",
+    "    basis = FiniteSet()\n",
+    "    alphas = get_alpha_beta(k)\n",
+    "    for a in alphas:\n",
+    "        if a[0] > 1:\n",
+    "            alphas -= FiniteSet(a)\n",
+    "    print(f'# of elements = {len(alphas)}')\n",
+    "    print(f'Dimension from combinatorial expression = {real_dim()} \\n')\n",
+    "    for a in alphas:\n",
+    "        d = D(np_real, a, zs)\n",
+    "        d = make_polynomial(d, mag_real)\n",
+    "        print(d, '\\n')\n",
+    "        basis += FiniteSet(d)\n",
+    "    return basis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "08de93a1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.380956Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.380068Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.387520Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.386552Z"
+    },
+    "papermill": {
+     "duration": 0.013466,
+     "end_time": "2025-07-03T15:01:29.389041",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.375575",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Finding basis for H_p,q(C^n)\n",
+    "def basis_H_pq() -> sp.FiniteSet:\n",
+    "    basis = FiniteSet()\n",
+    "    alphas = get_alpha_beta(p)\n",
+    "    betas = get_alpha_beta(q)\n",
+    "    ab = FiniteSet()\n",
+    "    for a in alphas:\n",
+    "        for b in betas:\n",
+    "            if a[0]==0 or b[0]==0:\n",
+    "                ab += FiniteSet((a,b))\n",
+    "    print(f'# of elements = {len(ab)}')\n",
+    "    print(f'Dimension from combinatorial expression = {dim_H_pq()} \\n')\n",
+    "    for (a,b) in ab:\n",
+    "        d = D(np_complex,b,zs)\n",
+    "        d = D(d,a,zbar)\n",
+    "        d = make_polynomial(d, mag_complex)\n",
+    "        print(d, '\\n')\n",
+    "        basis += FiniteSet(d)\n",
+    "    return basis"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "4464095f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.397679Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.397301Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.402744Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.401585Z"
+    },
+    "papermill": {
+     "duration": 0.011763,
+     "end_time": "2025-07-03T15:01:29.404334",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.392571",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Regular complex Laplacian\n",
+    "def box(f:sp.Add) -> sp.Add:\n",
+    "    laplacian = 0\n",
+    "    for i in range(n):\n",
+    "        laplacian += diff(diff(f,zbar[i]),zs[i])\n",
+    "    return laplacian"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "ded728a6",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.413485Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.412651Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.420223Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.419143Z"
+    },
+    "papermill": {
+     "duration": 0.013718,
+     "end_time": "2025-07-03T15:01:29.421815",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.408097",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Kohn Laplacian as given in 2018 REU paper\n",
+    "def box_b(f:sp.Add) -> sp.Add:\n",
+    "    box_b = 0\n",
+    "    # first term\n",
+    "    for i in range(n): \n",
+    "        box_b += -2*diff(diff(f,zbar[i]), zs[i])\n",
+    "        \n",
+    "    # second term\n",
+    "    for i in range(n): \n",
+    "        box_b += 2*diff(zs[i]*q*f, zs[i])\n",
+    "        \n",
+    "    # third term (double sum)\n",
+    "    for i in range(n): \n",
+    "        for a in range(n):\n",
+    "            box_b += 2*diff(zs[a]*zbar[i]*diff(f,zbar[i]), zs[a])\n",
+    "            \n",
+    "    # fourth term (double sum)\n",
+    "    for i in range(n): \n",
+    "        for a in range(n):\n",
+    "            box_b += -2*diff(zs[a]*zbar[i]*zs[i]*q*f, zs[a])\n",
+    "    return box_b"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "0364afbc",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.430120Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.429739Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.435124Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.434139Z"
+    },
+    "papermill": {
+     "duration": 0.01183,
+     "end_time": "2025-07-03T15:01:29.437085",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.425255",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Just in case :)\n",
+    "# Checks whether a given function is harmonic\n",
+    "def is_harmonic(f:sp.Add) -> bool:\n",
+    "    return (box_b(f)/f).simplify().is_polynomial(mag_complex)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "0c6c25c1",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T15:01:29.445461Z",
+     "iopub.status.busy": "2025-07-03T15:01:29.445074Z",
+     "iopub.status.idle": "2025-07-03T15:01:29.452492Z",
+     "shell.execute_reply": "2025-07-03T15:01:29.451532Z"
+    },
+    "papermill": {
+     "duration": 0.013493,
+     "end_time": "2025-07-03T15:01:29.454021",
+     "exception": false,
+     "start_time": "2025-07-03T15:01:29.440528",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Adapted from SoS 2020 unfinished REU paper\n",
+    "def M(j:int, k:int, f:sp.Add) -> sp.Add:\n",
+    "    return zbar[j]*diff(f,zs[k]) - zbar[k]*diff(f,zs[j])\n",
+    "\n",
+    "def M_bar(j:int, k:int, f:sp.Add) -> sp.Add:\n",
+    "    return zs[j]*diff(f,zbar[k]) - zs[k]*diff(f,zbar[j])\n",
+    "\n",
+    "# Equivalent to Kohn Laplacian\n",
+    "def R(f:sp.Add) -> sp.Add:\n",
+    "    R = 0\n",
+    "    for k in range(1,n):\n",
+    "        for j in range(k):\n",
+    "            R += M(j,k,M_bar(j,k,f))\n",
+    "    R *= -1\n",
+    "    return R"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [],
+   "dockerImageVersionId": 31040,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.11"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 11.009439,
+   "end_time": "2025-07-03T15:01:30.078093",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-07-03T15:01:19.068654",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
