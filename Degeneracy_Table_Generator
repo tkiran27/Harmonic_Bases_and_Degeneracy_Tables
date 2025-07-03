@@ -1,0 +1,738 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "a845f556",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:13.442979Z",
+     "iopub.status.busy": "2025-07-03T20:02:13.441952Z",
+     "iopub.status.idle": "2025-07-03T20:02:18.968476Z",
+     "shell.execute_reply": "2025-07-03T20:02:18.967064Z"
+    },
+    "papermill": {
+     "duration": 5.534752,
+     "end_time": "2025-07-03T20:02:18.970242",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:13.435490",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/4D.csv\n",
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/5D.csv\n",
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/2D.csv\n",
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/3D.csv\n",
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/6D.csv\n",
+      "/kaggle/input/degeneracy-tables-for-sphere-quotients/7D.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "import itertools as it\n",
+    "import sympy as sp \n",
+    "import pandas as pd\n",
+    "from sympy import symbols, Function, diff, FiniteSet, simplify, re, AlgebraicNumber\n",
+    "from sympy import Q, ask\n",
+    "from sympy import *\n",
+    "from sympy.utilities.iterables import partitions\n",
+    "from sympy.functions.combinatorial.numbers import nC\n",
+    "from sympy.matrices import diag, eye\n",
+    "\n",
+    "import os\n",
+    "import zipfile\n",
+    "import shutil\n",
+    "\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input/'):\n",
+    "    for filename in filenames:\n",
+    "        print(os.path.join(dirname, filename))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "59185759",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:18.979609Z",
+     "iopub.status.busy": "2025-07-03T20:02:18.979172Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.016053Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.014659Z"
+    },
+    "papermill": {
+     "duration": 0.043504,
+     "end_time": "2025-07-03T20:02:19.017993",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:18.974489",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Copied 4D.csv\n",
+      "Copied 5D.csv\n",
+      "Copied 2D.csv\n",
+      "Copied 3D.csv\n",
+      "Copied 6D.csv\n",
+      "Copied 7D.csv\n"
+     ]
+    }
+   ],
+   "source": [
+    "# https://www.kaggle.com/code/abdurrakibmollah/move-files-from-input-to-output-folder\n",
+    "dst_path = \"/kaggle/working/\"\n",
+    "for dirname, _, filenames in os.walk('/kaggle/input/degeneracy-tables-for-sphere-quotients'):\n",
+    "     for filename in filenames:\n",
+    "        src_path = os.path.join(dirname, filename)\n",
+    "        shutil.copy(src_path, dst_path)\n",
+    "        print('Copied '+filename)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "0dc87613",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003455,
+     "end_time": "2025-07-03T20:02:19.025748",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.022293",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Link to dataset\n",
+    "[**Click here**]( https://kaggle.com/datasets/2bfac494d293fd0ef000308bde664b74a42f477733773b84662f2333be424ee1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "bb180be2",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003411,
+     "end_time": "2025-07-03T20:02:19.032863",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.029452",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "# Degeneracy tables"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "815a3786",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003269,
+     "end_time": "2025-07-03T20:02:19.039871",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.036602",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Remember to click Run All at the beginning of each session. To generate tables, make a new cell and call one of the functions below.\n",
+    "\n",
+    "To generate a table for a lens space, use lens_table(k, ls, deg) \\\n",
+    "    * k is the order of the group (usually prime) \\\n",
+    "    * ls is the list of integers relatively prime to $k$ \\\n",
+    "    * deg is how big you want the table to be \\\n",
+    "    * **Example:** lens_table(5,[1,2,3],10) returns a table for L(5;1,2,3) containing entries for all $p,q \\leq 10$\n",
+    "\n",
+    "For a general quotient space, use degeneracy_table(generator, deg) \\\n",
+    "    * generator is a matrix that generates the cyclic group you want to study \\\n",
+    "    * deg is the same as above \\\n",
+    "    * **Example:** degeneracy_table(M,10) returns a table for the quotient space under the group generated by the matrix $M$"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "f853c032",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003386,
+     "end_time": "2025-07-03T20:02:19.046952",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.043566",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "## How to type Sympy matrices (spoiler: it's quite tedious)\n",
+    "\n",
+    "eye(n) will give you the $n\\times n$ identity matrix \\\n",
+    "diag(x_1, x_2, ..., x_k) will give you a diagonal matrix with x_1,...,x_k along the main diagonal- and these entries can be matrices themselves!\n",
+    "\n",
+    "For other matrices, use Matrix([[row 1],[row 2],...,[row k]]) \\\n",
+    "    * Put rational entries inside of a Rational() object- e.g. Rational(1/2) instead of 1/2 (this makes sure the code performs calculations symbolically and doesn't use floating point representation) \\\n",
+    "    * Use sqrt() for radicals \\\n",
+    "    * I (capital i) is the imaginary number\n",
+    "\n",
+    "See [Sympy's documentation](https://docs.sympy.org/latest/modules/matrices/matrices.html) for more information"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "8b705c18",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.056143Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.055774Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.070354Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.069171Z"
+    },
+    "papermill": {
+     "duration": 0.021282,
+     "end_time": "2025-07-03T20:02:19.071906",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.050624",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/latex": [
+       "$\\displaystyle \\left[\\begin{matrix}\\frac{1}{2} & \\frac{1}{2} & \\frac{1}{2} & \\frac{1}{2}\\\\\\frac{1}{2} & \\frac{i}{2} & - \\frac{1}{2} & - \\frac{i}{2}\\\\\\frac{1}{2} & - \\frac{1}{2} & \\frac{1}{2} & - \\frac{1}{2}\\\\\\frac{1}{2} & - \\frac{i}{2} & - \\frac{1}{2} & \\frac{i}{2}\\end{matrix}\\right]$"
+      ],
+      "text/plain": [
+       "Matrix([\n",
+       "[1/2,  1/2,  1/2,  1/2],\n",
+       "[1/2,  I/2, -1/2, -I/2],\n",
+       "[1/2, -1/2,  1/2, -1/2],\n",
+       "[1/2, -I/2, -1/2,  I/2]])"
+      ]
+     },
+     "execution_count": 3,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "# Example matrices\n",
+    "M1 = Matrix([[Rational(1/2),Rational(1/2),Rational(1/2),Rational(1/2)],\n",
+    "           [Rational(1/2),I/2,Rational(-1/2),-I/2],\n",
+    "           [Rational(1/2),Rational(-1/2),Rational(1/2),Rational(-1/2)],\n",
+    "           [Rational(1/2),-I/2,Rational(-1/2),I/2]])\n",
+    "\n",
+    "M2 = Matrix([[Rational(1/2),sqrt(3)*I/2],[sqrt(3)*I/2,Rational(1/2)]])\n",
+    "\n",
+    "# Change this to M2 to see the second matrix\n",
+    "M1"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "a446ede2",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.081144Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.080804Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.086519Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.085288Z"
+    },
+    "papermill": {
+     "duration": 0.012767,
+     "end_time": "2025-07-03T20:02:19.088695",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.075928",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Returns a diagonal matrix that generates the cyclic group for a lens space\n",
+    "def make_lens_matrix(k:int, ls:[int]) -> sp.Matrix:\n",
+    "    M = Matrix()\n",
+    "    zeta = exp(2*pi*I/k)\n",
+    "    for l in ls:\n",
+    "        M=diag(M,zeta**l)\n",
+    "    return M"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "14aeb29e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.099040Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.098736Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.106041Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.104966Z"
+    },
+    "papermill": {
+     "duration": 0.014555,
+     "end_time": "2025-07-03T20:02:19.107864",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.093309",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Setting up symbols\n",
+    "z,w = symbols('z w')\n",
+    "\n",
+    "# General Ikeda generating function for any FINITE group\n",
+    "def F_gen(group:sp.FiniteSet) -> sp.Add:\n",
+    "    F = 0\n",
+    "    for g in group:\n",
+    "        n = sqrt(len(g))\n",
+    "        frac = (1-z*w) / ((z*eye(n)-g).det() * (w*eye(n)-g.C).det())\n",
+    "        F += frac\n",
+    "    F = (1/len(group))*F\n",
+    "    return F"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "7a40d1ac",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.118032Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.117724Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.125572Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.124397Z"
+    },
+    "papermill": {
+     "duration": 0.014733,
+     "end_time": "2025-07-03T20:02:19.127161",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.112428",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Determines if a matrix is unitary\n",
+    "def is_unitary(g:sp.Matrix) -> bool:\n",
+    "    return g.inv() == g.H\n",
+    "\n",
+    "# Helper function to check that the determinants aren't diverging\n",
+    "def get_abs(num:sp.Add) -> sp.Mul:\n",
+    "    return sqrt(re(((num)*conjugate(num)).expand()))\n",
+    "\n",
+    "# Returns a set of matrices that form the cyclic group generated by g\n",
+    "def make_group(g:sp.Matrix) -> sp.FiniteSet:\n",
+    "    G = FiniteSet(eye(sqrt(len(g))))\n",
+    "    gamma = g \n",
+    "    i=1\n",
+    "    unitary = is_unitary(g)\n",
+    "    while gamma != eye(sqrt(len(g))):\n",
+    "        G += FiniteSet(gamma)\n",
+    "        dist = get_abs(det(gamma)-1) # To make sure the group isn't infinite\n",
+    "        # print(dist)\n",
+    "        gamma *= g\n",
+    "        if get_abs(det(gamma)-1) > dist and not unitary:\n",
+    "            print(f'{get_abs(det(gamma)-1)}>{dist}')\n",
+    "            raise Exception(\"This is an infinite group. Please try a different generator.\")\n",
+    "        i += 1\n",
+    "    return G "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "13a9070c",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.137029Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.136714Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.144530Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.143210Z"
+    },
+    "papermill": {
+     "duration": 0.01515,
+     "end_time": "2025-07-03T20:02:19.146690",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.131540",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Coefficients from Taylor series expansion for a two-variable function- read more at\n",
+    "# https://math.libretexts.org/Bookshelves/Calculus/Supplemental_Modules_(Calculus)/Multivariable_Calculus/3%3A_Topics_in_Partial_Derivatives/Taylor__Polynomials_of_Functions_of_Two_Variables\n",
+    "def taylor_coeffs(f:sp.Add, deg:int) -> list:\n",
+    "    table = []\n",
+    "    for i in range(deg+1):\n",
+    "        row = []\n",
+    "        for j in range(deg+1-i):\n",
+    "            d = diff(f,w,j)\n",
+    "            d = diff(d,z,i)\n",
+    "            d = lambdify([z,w],d)\n",
+    "            term = re(d(0,0)/(factorial(i)*factorial(j))).round()\n",
+    "            row.append(term)\n",
+    "        while len(row) < deg+1:\n",
+    "            row.append('-')\n",
+    "        table.append(row)\n",
+    "    return table"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "fb16e3f6",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.157363Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.156909Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.166511Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.165197Z"
+    },
+    "papermill": {
+     "duration": 0.016928,
+     "end_time": "2025-07-03T20:02:19.168176",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.151248",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Puts a '-' where there's no entry in the table\n",
+    "def add_dashes(table:list, deg:int) -> list:\n",
+    "    T = []\n",
+    "    for row in table:\n",
+    "        while len(row) < deg+1:\n",
+    "            row.append('-')\n",
+    "        T.append(row)\n",
+    "    return T\n",
+    "\n",
+    "# Avoids repeating computations when making larger versions of tables that are already\n",
+    "# in the dataset\n",
+    "# Reads the existing table and adds onto it\n",
+    "def enlarge(f:sp.Add, deg:int, table:list) -> list:\n",
+    "    T = []\n",
+    "    for row in table:\n",
+    "        while row[-1]=='-':\n",
+    "            row = row[:-1]\n",
+    "        T.append(row)\n",
+    "    start = len(T)\n",
+    "    for i in range(start,deg+1):\n",
+    "        for j in range(i):\n",
+    "            d = diff(f,w,j)\n",
+    "            d = diff(d,z,i-j)\n",
+    "            d = lambdify([z,w],d)\n",
+    "            term = re(d(0,0)/(factorial(i-j)*factorial(j))).round()\n",
+    "            T[j].append(term)\n",
+    "        d = lambdify([z,w],diff(f,w,i))\n",
+    "        term = re(d(0,0)/(factorial(i))).round()\n",
+    "        T.append([term])\n",
+    "    T = add_dashes(T,deg)\n",
+    "    return T"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "6f3860d4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.177502Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.177084Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.183505Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.182226Z"
+    },
+    "papermill": {
+     "duration": 0.01317,
+     "end_time": "2025-07-03T20:02:19.185459",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.172289",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Gets a single degeneracy table (as a list of lists) from the dataset\n",
+    "def clean_col(df:pd.DataFrame, col:int) -> list:\n",
+    "    table = df[col].to_list()\n",
+    "    num_table = []\n",
+    "    while type(table[-1]) is float:\n",
+    "        table = table[:-1]\n",
+    "    for row in table:\n",
+    "        num_table.append(eval(row))\n",
+    "    return num_table"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "6ba5fafd",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.195771Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.195388Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.202400Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.201036Z"
+    },
+    "papermill": {
+     "duration": 0.014141,
+     "end_time": "2025-07-03T20:02:19.204030",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.189889",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Turns the order k and a list of l values into the name of a lens space (string)\n",
+    "# To avoid duplicates, the l values are modded by k and sorted in ascending order \n",
+    "# (this doesn't affect the Ikeda generating function and thus doesn't affect the \n",
+    "# degeneracy tables)\n",
+    "# However, a few duplicates found their way into the dataset from earlier versions (Sorry!)\n",
+    "def make_lens_str(k:int, ls:[int]) -> str:\n",
+    "    lens = \"L(\"+str(k)+\";\"\n",
+    "    for i in range(len(ls)):\n",
+    "        ls[i] = ls[i] % k\n",
+    "    ls.sort()\n",
+    "    for l in ls:\n",
+    "        lens += str(l)+\",\"\n",
+    "    lens = lens[:-1]\n",
+    "    lens += \")\"\n",
+    "    return lens"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "09cd1404",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.213068Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.212711Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.218384Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.217176Z"
+    },
+    "papermill": {
+     "duration": 0.012,
+     "end_time": "2025-07-03T20:02:19.219957",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.207957",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# File lookup\n",
+    "def find_file(file:str) -> bool:\n",
+    "    for dirname, _, filenames in os.walk('/kaggle/working'):\n",
+    "        if file in filenames:\n",
+    "            return True\n",
+    "    return False"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "4b98030e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.229578Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.228662Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.236263Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.235130Z"
+    },
+    "papermill": {
+     "duration": 0.013995,
+     "end_time": "2025-07-03T20:02:19.237893",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.223898",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Creates a degeneracy table for a lens space with entries for all 0 <= p,q <= deg\n",
+    "# If there's already an entry for the lens space, this function finds it in the dataset\n",
+    "# Otherwise it adds the new table to the dataset\n",
+    "def lens_table(k:int, ls:[int], deg:int) -> pd.DataFrame:\n",
+    "    N = len(ls)\n",
+    "    lens = make_lens_str(k,ls)\n",
+    "    # file = 'n=' + str(N) + '.csv'\n",
+    "    file = str(N) + 'D.csv'\n",
+    "    path = \"/kaggle/working/\" + file\n",
+    "    if find_file(file):\n",
+    "        try:\n",
+    "            data = pd.read_csv(path)\n",
+    "        except pd.errors.EmptyDataError:\n",
+    "            data = pd.DataFrame()\n",
+    "    else:\n",
+    "        data = pd.DataFrame()\n",
+    "    G = make_group(make_lens_matrix(k,ls))\n",
+    "    f = F_gen(G)\n",
+    "    if lens not in data:\n",
+    "        T = taylor_coeffs(f,deg)\n",
+    "    else:\n",
+    "        T = clean_col(data,lens)\n",
+    "        if deg >= len(clean_col(data,lens)):\n",
+    "            T = enlarge(f,deg,T)\n",
+    "    print(lens)\n",
+    "    return pd.DataFrame(T)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "11cba42b",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.246633Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.246358Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.253288Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.252321Z"
+    },
+    "papermill": {
+     "duration": 0.013566,
+     "end_time": "2025-07-03T20:02:19.255279",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.241713",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Creates a table for any quotient space with entries for all 0 <= p,q <= deg\n",
+    "def degeneracy_table(generator:sp.Matrix, deg:int) -> pd.DataFrame:\n",
+    "    N = sqrt(len(generator))\n",
+    "    name = str(generator)\n",
+    "    file = str(N) + 'D.csv'\n",
+    "    path = \"/kaggle/working/\" + file\n",
+    "    if find_file(file):\n",
+    "        try:\n",
+    "            data = pd.read_csv(path)\n",
+    "        except pd.errors.EmptyDataError:\n",
+    "            data = pd.DataFrame()\n",
+    "    else:\n",
+    "        data = pd.DataFrame()\n",
+    "    G = make_group(generator)\n",
+    "    f = F_gen(G)\n",
+    "    if name not in data:\n",
+    "        T = taylor_coeffs(f,deg)\n",
+    "    else:\n",
+    "        T = clean_col(data,name)\n",
+    "        if deg >= len(T):\n",
+    "            T = enlarge(f,deg,T)\n",
+    "    return pd.DataFrame(T)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 14,
+   "id": "f33a66bb",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-07-03T20:02:19.264923Z",
+     "iopub.status.busy": "2025-07-03T20:02:19.264614Z",
+     "iopub.status.idle": "2025-07-03T20:02:19.270039Z",
+     "shell.execute_reply": "2025-07-03T20:02:19.269166Z"
+    },
+    "papermill": {
+     "duration": 0.012071,
+     "end_time": "2025-07-03T20:02:19.271743",
+     "exception": false,
+     "start_time": "2025-07-03T20:02:19.259672",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "# Adds the dimensions along a diagonal \n",
+    "# Use this to see the relationship between box_b (H_p,q) and the real Laplacian (H_k)\n",
+    "def add_diag(table, diagonal:int) -> int:\n",
+    "    sum = 0\n",
+    "    for i in range(diagonal+1):\n",
+    "        sum += table[i][diagonal-i]\n",
+    "    return sum\n",
+    "\n",
+    "# Prints out the sums of the diagonals in an aesthetically pleasing way\n",
+    "def print_diag_sums(table:list):\n",
+    "    for i in range(len(table)):\n",
+    "        print(f'p+q={i} -> Sum of diagonal = {add_diag(table,i)}')"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 7748921,
+     "sourceId": 12365165,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 31040,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.11"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 12.331441,
+   "end_time": "2025-07-03T20:02:19.997077",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-07-03T20:02:07.665636",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
